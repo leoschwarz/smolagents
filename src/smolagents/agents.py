@@ -380,6 +380,7 @@ class MultiStepAgent:
         try:
             return self.model(self.input_messages).content
         except Exception as e:
+            logger.warning("Error in generating final LLM output: %r", e, exc_info=True)
             return f"Error in generating final LLM output:\n{e}"
 
     def execute_tool_call(self, tool_name: str, arguments: Union[Dict[str, str], str]) -> Any:
