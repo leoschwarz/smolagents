@@ -14,6 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import time
 from dataclasses import dataclass
 from enum import IntEnum
@@ -68,6 +69,9 @@ from .utils import (
     parse_json_tool_call,
     truncate_content,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -530,6 +534,7 @@ You have been provided with these additional arguments, that you can access usin
                 # Run one step!
                 final_answer = self.step(step_log)
             except AgentError as e:
+                logger.warning("Step %d failed due to %r", self.step_number, e, exc_info=True)
                 step_log.error = e
             finally:
                 step_log.end_time = time.time()
@@ -584,6 +589,7 @@ You have been provided with these additional arguments, that you can access usin
                 final_answer = self.step(step_log)
 
             except AgentError as e:
+                logger.warning("Step %d failed due to %r", self.step_number, e, exc_info=True)
                 step_log.error = e
             finally:
                 step_end_time = time.time()
