@@ -354,10 +354,10 @@ class MultiStepAgent:
                 split[-2],
                 split[-1],
             )  # NOTE: using indexes starting from the end solves for when you have more than one split_token in the output
-        except Exception:
+        except Exception as e:
             raise AgentParsingError(
                 f"No '{split_token}' token provided in your output.\nYour output:\n{llm_output}\n. Be sure to include an action, prefaced with '{split_token}'!"
-            )
+            ) from e
         return rationale.strip(), action.strip()
 
     def provide_final_answer(self, task) -> str:
@@ -422,13 +422,13 @@ class MultiStepAgent:
                     f"Error in tool call execution: {e}\nYou should only use this tool with a correct input.\n"
                     f"As a reminder, this tool's description is the following:\n{tool_description}"
                 )
-                raise AgentExecutionError(error_msg)
+                raise AgentExecutionError(error_msg) from e
             elif tool_name in self.managed_agents:
                 error_msg = (
                     f"Error in calling team member: {e}\nYou should only ask this team member with a correct request.\n"
                     f"As a reminder, this team member's description is the following:\n{available_tools[tool_name]}"
                 )
-                raise AgentExecutionError(error_msg)
+                raise AgentExecutionError(error_msg) from e
 
     def step(self, log_entry: ActionStep) -> Union[None, Any]:
         """To be implemented in children classes. Should return either None if the step is not final."""
@@ -769,7 +769,7 @@ class ToolCallingAgent(MultiStepAgent):
             tool_arguments = tool_call.function.arguments
 
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating tool call with model:\n{e}")
+            raise AgentGenerationError(f"Error in generating tool call with model:\n{e}") from e
 
         log_entry.tool_calls = [ToolCall(name=tool_name, arguments=tool_arguments, id=tool_call_id)]
 
@@ -915,7 +915,7 @@ class CodeAgent(MultiStepAgent):
             ).content
             log_entry.llm_output = llm_output
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating model output:\n{e}")
+            raise AgentGenerationError(f"Error in generating model output:\n{e}") from e
 
         self.logger.log(
             Group(
@@ -939,7 +939,7 @@ class CodeAgent(MultiStepAgent):
             code_action = fix_final_answer_code(parse_code_blobs(llm_output))
         except Exception as e:
             error_msg = f"Error in code parsing:\n{e}\nMake sure to provide correct code blobs."
-            raise AgentParsingError(error_msg)
+            raise AgentParsingError(error_msg) from e
 
         log_entry.tool_calls = [
             ToolCall(
@@ -985,7 +985,7 @@ class CodeAgent(MultiStepAgent):
                     "[bold red]Warning to user: Code execution failed due to an unauthorized import - Consider passing said import under `additional_authorized_imports` when initializing your CodeAgent.",
                     level=LogLevel.INFO,
                 )
-            raise AgentExecutionError(error_msg)
+            raise AgentExecutionError(error_msg) from e
 
         truncated_output = truncate_content(str(output))
         observation += "Last output from code snippet:\n" + truncated_output
