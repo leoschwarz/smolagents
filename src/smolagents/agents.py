@@ -17,17 +17,15 @@
 import importlib
 import inspect
 import json
+import logging
 import os
 import re
 import tempfile
 import textwrap
-import logging
 import time
 from collections import deque
-from logging import getLogger
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, TypedDict, Union
-from dataclasses import dataclass
 
 import jinja2
 import yaml
@@ -73,13 +71,6 @@ from .utils import (
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolCall:
-    name: str
-    arguments: Any
-    id: str
 
 
 def get_variable_names(self, template: str) -> Set[str]:
@@ -245,9 +236,9 @@ class MultiStepAgent:
     def _setup_managed_agents(self, managed_agents):
         self.managed_agents = {}
         if managed_agents:
-            assert all(agent.name and agent.description for agent in managed_agents), (
-                "All managed agents need both a name and a description!"
-            )
+            assert all(
+                agent.name and agent.description for agent in managed_agents
+            ), "All managed agents need both a name and a description!"
             self.managed_agents = {agent.name: agent for agent in managed_agents}
 
     def _setup_tools(self, tools, add_base_tools):
@@ -750,7 +741,8 @@ You have been provided with these additional arguments, that you can access usin
         # Make agent.py file with Gradio UI
         agent_name = f"agent_{self.name}" if getattr(self, "name", None) else "agent"
         managed_agent_relative_path = relative_path + "." if relative_path is not None else ""
-        app_template = textwrap.dedent("""
+        app_template = textwrap.dedent(
+            """
             import yaml
             import os
             from smolagents import GradioUI, {{ class_name }}, {{ agent_dict['model']['class'] }}
@@ -787,7 +779,8 @@ You have been provided with these additional arguments, that you can access usin
             )
             if __name__ == "__main__":
                 GradioUI({{ agent_name }}).launch()
-            """).strip()
+            """
+        ).strip()
         template_env = jinja2.Environment(loader=jinja2.BaseLoader(), undefined=jinja2.StrictUndefined)
         template_env.filters["repr"] = repr
         template_env.filters["camelcase"] = lambda value: "".join(word.capitalize() for word in value.split("_"))
