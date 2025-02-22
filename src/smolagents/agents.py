@@ -27,6 +27,7 @@ from collections import deque
 from logging import getLogger
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, TypedDict, Union
+from dataclasses import dataclass
 
 import jinja2
 import yaml
