@@ -21,6 +21,7 @@ import os
 import re
 import tempfile
 import textwrap
+import logging
 import time
 from collections import deque
 from logging import getLogger
@@ -70,7 +71,14 @@ from .utils import (
 )
 
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ToolCall:
+    name: str
+    arguments: Any
+    id: str
 
 
 def get_variable_names(self, template: str) -> Set[str]:
@@ -548,11 +556,11 @@ You have been provided with these additional arguments, that you can access usin
                 split[-2],
                 split[-1],
             )  # NOTE: using indexes starting from the end solves for when you have more than one split_token in the output
-        except Exception:
+        except Exception as e:
             raise AgentParsingError(
                 f"No '{split_token}' token provided in your output.\nYour output:\n{model_output}\n. Be sure to include an action, prefaced with '{split_token}'!",
                 self.logger,
-            )
+            ) from e
         return rationale.strip(), action.strip()
 
     def provide_final_answer(self, task: str, images: Optional[list[str]]) -> str:
@@ -597,6 +605,7 @@ You have been provided with these additional arguments, that you can access usin
             chat_message: ChatMessage = self.model(messages)
             return chat_message.content
         except Exception as e:
+            logger.warning("Error in generating final LLM output: %r", e, exc_info=True)
             return f"Error in generating final LLM output:\n{e}"
 
     def execute_tool_call(self, tool_name: str, arguments: Union[Dict[str, str], str]) -> Any:
@@ -638,13 +647,13 @@ You have been provided with these additional arguments, that you can access usin
                     f"Error when executing tool {tool_name} with arguments {arguments}: {type(e).__name__}: {e}\nYou should only use this tool with a correct input.\n"
                     f"As a reminder, this tool's description is the following: '{tool.description}'.\nIt takes inputs: {tool.inputs} and returns output type {tool.output_type}"
                 )
-                raise AgentExecutionError(error_msg, self.logger)
+                raise AgentExecutionError(error_msg, self.logger) from e
             elif tool_name in self.managed_agents:
                 error_msg = (
                     f"Error in calling team member: {e}\nYou should only ask this team member with a correct request.\n"
                     f"As a reminder, this team member's description is the following:\n{available_tools[tool_name]}"
                 )
-                raise AgentExecutionError(error_msg, self.logger)
+                raise AgentExecutionError(error_msg, self.logger) from e
 
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """To be implemented in children classes. Should return either None if the step is not final."""
